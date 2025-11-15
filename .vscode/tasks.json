@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start mspdebug GDB Server",
+            "type": "shell",
+            // NOTE: Adjust the driver (tilib, rf2500, etc.) if needed!
+            "command": "mspdebug tilib gdb",
+            "isBackground": true,
+            "options": {
+                // Ensure the task runs in the background and doesn't block the terminal
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": {
+                "pattern": [
+                    {
+                        "regexp": ".*",
+                        "file": 1,
+                        "location": 2,
+                        "message": 3
+                    }
+                ],
+                // Tell VS Code when the server is ready (when it detects the GDB server listening)
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*Now waiting for connection.*",
+                    "endsPattern": ".*"
+                }
+            }
+        }
+    ]
+}

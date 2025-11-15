@@ -1,0 +1,53 @@
+{
+    "version": "0.2.0",
+    "inputs": [
+        {
+            "id": "elfFileName",
+            "type": "promptString",
+            "description": "Enter the base name of the ELF file to debug (e.g., 'blink').",
+            "default": "blink"
+        }
+    ],
+    "configurations": [
+        // ----------------------------------------------------------------------
+        // 1. The main GDB connection configuration
+        // ----------------------------------------------------------------------
+        {
+            "name": "Launch GDB Client (Hidden)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/${input:elfFileName}.elf",
+            // ... (rest of your settings, like miDebuggerPath and setupCommands)
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/ti/msp430-gcc/bin/msp430-elf-gdb",
+            "setupCommands": [
+                // Give the server a moment to start
+                {"text": "file ${workspaceFolder}/${input:elfFileName}.elf"},
+                {"text": "target extended-remote :2000"},
+                {"text": "load"},
+                {"text": "monitor reset halt"},
+                {"text": "break main"},
+            ],
+            // Use preLaunchTask to hook up the task defined above
+            "preLaunchTask": "Start mspdebug GDB Server",
+            // Hide this config, as the compound one is the entry point
+            "internalConsoleOptions": "neverOpen" 
+        }
+    ],
+    "compounds": [
+        // ----------------------------------------------------------------------
+        // Compound configurations must be declared in the top-level "compounds"
+        // array (not as a configuration with type "compound").
+        // ----------------------------------------------------------------------
+        {
+            "name": "Run & Debug MSP430",
+            "configurations": ["Launch GDB Client (Hidden)"],
+            // This is key: it ensures the 'Launch GDB Client' configuration 
+            // runs the preLaunchTask first.
+            "stopAll": true
+        }
+    ]
+}

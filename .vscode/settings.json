@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "stdbool.h": "c",
+        "msp430fr5994.h": "c"
+    }
+}
