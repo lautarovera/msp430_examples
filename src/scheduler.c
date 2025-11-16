@@ -23,25 +23,27 @@ typedef void (*task_fn_t)(void);
 
 typedef struct {
     task_fn_t  fn;         // function to run
-    uint32_t   period_ms;  // period in ms (must be multiple of TICK_MS)
+    uint16_t   period_ms;  // period in ms (must be multiple of TICK_MS)
+    uint16_t   offset_ms;
     volatile uint16_t pending; // pending executions queued by ISR (incremented in ISR)
 } task_t;
 
 /* ---------- User task prototypes (examples) ---------- */
 static void task_10ms(void);
+static void task_50ms(void);
 static void task_100ms(void);
-static void task_500ms(void);
 
 /* ---------- Scheduler storage ---------- */
 static task_t tasks[MAX_TASKS];
 static uint8_t  task_count = 0;
 
 /* Register a periodic task. Returns 0 on success, -1 on failure. */
-int Scheduler_AddTask(task_fn_t fn, uint32_t period_ms)
+int Scheduler_AddTask(task_fn_t fn, uint16_t period_ms , uint16_t offset_ms)
 {
     if (!fn || period_ms == 0 || task_count >= MAX_TASKS) return -1;
     tasks[task_count].fn = fn;
     tasks[task_count].period_ms = period_ms;
+    tasks[task_count].offset_ms = offset_ms;
     tasks[task_count].pending = 0;
     task_count++;
     return 0;
@@ -51,7 +53,7 @@ int Scheduler_AddTask(task_fn_t fn, uint32_t period_ms)
 void Clk_Init(void)
 {
     CSCTL0_H = CSKEY >> 8;            // unlock
-    CSCTL1 = DCOFSEL_0;               // DCO = 1 MHz
+    CSCTL1 = DCOFSEL_6;               // DCO = 8 MHz
     CSCTL2 = SELA__VLOCLK | SELS__DCOCLK | SELM__DCOCLK;
     CSCTL3 = DIVA__1 | DIVS__1 | DIVM__1;
     CSCTL0_H = 0;                     // lock
@@ -59,9 +61,9 @@ void Clk_Init(void)
 
 void Gpio_Init(void)
 {
-    PM5CTL0 &= ~LOCKLPM5;             // enable GPIO (FRAM devices)
-    P1DIR |= BIT0 | BIT1;             // P1.0 and P1.1 outputs
-    P1OUT &= ~(BIT0 | BIT1);
+    PM5CTL0 &= ~LOCKLPM5;
+    P1DIR |= BIT3 | BIT4 | BIT5;
+    P1OUT &= ~(BIT3 | BIT4 | BIT5);
 }
 
 /* Setup TA0 CCR0 to create 1 ms tick:
@@ -70,9 +72,9 @@ void Gpio_Init(void)
  */
 void TimerA0_Init(void)
 {
-    TA0CCR0 = 999;                    // 1 MHz / 1000 = 1 kHz => 1 ms
     TA0CCTL0 = CCIE;                  // CCR0 interrupt enable
-    TA0CTL = TASSEL__SMCLK | MC__UP | TACLR; // SMCLK, up mode, clear TAR
+    TA0CCR0  = 999;
+    TA0CTL   = TASSEL_2 | MC_1 | ID_3 | TACLR;  // SMCLK, Up mode, /8
 }
 
 /* ---------- ISR: keep very small ----------
@@ -101,7 +103,7 @@ void __attribute__ ((interrupt(TIMER0_A0_VECTOR))) Timer0_A0_ISR (void)
     for (i = 0; i < task_count; i++)
     {
         local_ms[i]++;  // increments in fast SRAM
-        if (local_ms[i] >= (uint16_t)tasks[i].period_ms) {
+        if (local_ms[i] >= (uint16_t)tasks[i].period_ms + (uint16_t)tasks[i].offset_ms) {
             local_ms[i] = 0;
             /* increment pending counter (volatile) -- small variable in RAM */
             if (tasks[i].pending < 0xFFFF) tasks[i].pending++;
@@ -126,9 +128,9 @@ int main(void)
     Gpio_Init();
 
     /* Register tasks (periods in ms). Period must be >= TICK_MS and integer ms. */
-    Scheduler_AddTask(task_10ms,  10);
-    Scheduler_AddTask(task_100ms, 100);
-    Scheduler_AddTask(task_500ms, 500);
+    Scheduler_AddTask(task_10ms, 10, 0);
+    Scheduler_AddTask(task_50ms, 50, 1);
+    Scheduler_AddTask(task_100ms, 100, 3);
 
     TimerA0_Init();
 
@@ -185,20 +187,26 @@ int main(void)
  */
 static void task_10ms(void)
 {
+    P1OUT ^= BIT3;
     /* Do nothing */
-    __no_operation();
+    __delay_cycles(8000);
+    P1OUT ^= BIT3;
+}
+
+static void task_50ms(void)
+{
+    P1OUT ^= BIT4;
+    /* Do nothing */
+    __delay_cycles(16000);
+    P1OUT ^= BIT4;
 }
 
 static void task_100ms(void)
 {
-    /* Toggle P1.0 */
-    P1OUT ^= BIT0;
-}
-
-static void task_500ms(void)
-{
-    /* Toggle P1.1 */
-    P1OUT ^= BIT1;
+    P1OUT ^= BIT5;
+    /* Do nothing */
+    __delay_cycles(40000);
+    P1OUT ^= BIT5;
 }
 
 /* ---------- Notes & limitations ----------

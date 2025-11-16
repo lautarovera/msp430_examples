@@ -19,23 +19,23 @@
 #define TICK_MS 1
 #define MAX_TASKS 8
 
-typedef void (*task_fn_t)(uint32_t now_ms);
+typedef void (*task_fn_t)(uint16_t now_ms);
 
 typedef struct {
     task_fn_t fn;
-    uint32_t  period_ms;
-    uint32_t  slice_ms;
-    uint32_t  phase_offset_ms;
-    uint32_t  next_run_ms;
+    uint16_t  period_ms;
+    uint16_t  slice_ms;
+    uint16_t  phase_offset_ms;
+    uint16_t  next_run_ms;
 } task_t;
 
 /* ---------- User tasks ---------- */
-static void Task_Fast(uint32_t now_ms);
-static void Task_Medium(uint32_t now_ms);
-static void Task_Slow(uint32_t now_ms);
+static void Task_Fast(uint16_t now_ms);
+static void Task_Medium(uint16_t now_ms);
+static void Task_Slow(uint16_t now_ms);
 
 /* ---------- Scheduler state ---------- */
-static volatile uint32_t sys_ms = 0;
+static volatile uint16_t sys_ms = 0;
 static task_t tasks[MAX_TASKS];
 static uint8_t task_count = 0;
 
@@ -51,9 +51,9 @@ void Clk_Init(void)
 
 void Gpio_Init(void)
 {
-    PM5CTL0 &= ~LOCKLPM5;             // enable GPIO
-    P1DIR |= BIT0 | BIT1;             // P1.0 and P1.1 outputs
-    P1OUT &= ~(BIT0 | BIT1);
+    PM5CTL0 &= ~LOCKLPM5;
+    P1DIR |= BIT3 | BIT4 | BIT5;
+    P1OUT &= ~(BIT3 | BIT4 | BIT5);
 }
 
 void TimerA0_Init(void)
@@ -64,7 +64,7 @@ void TimerA0_Init(void)
 }
 
 /* ---------- Task registration ---------- */
-int Scheduler_AddTask(task_fn_t fn, uint32_t period_ms, uint32_t slice_ms, uint32_t phase_offset_ms)
+int Scheduler_AddTask(task_fn_t fn, uint16_t period_ms, uint16_t slice_ms, uint16_t phase_offset_ms)
 {
     if (task_count >= MAX_TASKS) return -1;
     tasks[task_count].fn = fn;
@@ -101,15 +101,15 @@ int main(void)
 
     /* Register tasks with deterministic offsets */
     Scheduler_AddTask(Task_Fast,   10,  1,  0);   // every 10 ms, 1 ms slice, offset 0
-    Scheduler_AddTask(Task_Medium, 100, 5,  2);   // every 100 ms, 5 ms slice, offset 2
-    Scheduler_AddTask(Task_Slow,   500, 20, 10);  // every 500 ms, 20 ms slice, offset 10
+    Scheduler_AddTask(Task_Medium, 50, 5,  2);   // every 100 ms, 5 ms slice, offset 2
+    Scheduler_AddTask(Task_Slow,   100, 20, 10);  // every 500 ms, 20 ms slice, offset 10
 
     __enable_interrupt();
 
     while (1)
     {
         uint8_t have_work = 0;
-        uint32_t now_ms;
+        uint16_t now_ms;
 
         /* Atomically read current time */
         __disable_interrupt();
@@ -139,21 +139,41 @@ int main(void)
 }
 
 /* ---------- User task implementations ---------- */
-static void Task_Fast(uint32_t now_ms)
+static void Task_Fast(uint16_t now_ms)
 {
-    /* Simulate small work (LED toggle) */
-    P1OUT ^= BIT0;
-    (void)now_ms;
+    P1OUT |= BIT3;
+    uint16_t start = now_ms;
+
+    // Do useful work until we run out of time
+    do
+    {
+        _no_operation();
+    } while (TIME_ELAPSED(start) < 2);
+    P1OUT &= ~BIT3;
 }
 
-static void Task_Medium(uint32_t now_ms)
+static void Task_Medium(uint16_t now_ms)
 {
-    P1OUT ^= BIT0;  // toggle LED1 slower
-    (void)now_ms;
+    P1OUT |= BIT4;
+    uint16_t start = now_ms;
+
+    // Do useful work until we run out of time
+    do
+    {
+        _no_operation();
+    } while (TIME_ELAPSED(start) < 10);
+    P1OUT &= ~BIT4;
 }
 
-static void Task_Slow(uint32_t now_ms)
+static void Task_Slow(uint16_t now_ms)
 {
-    P1OUT ^= BIT1;  // toggle LED2
-    (void)now_ms;
+    P1OUT |= BIT5;
+    uint16_t start = now_ms;
+
+    // Do useful work until we run out of time
+    do
+    {
+        _no_operation();
+    } while (TIME_ELAPSED(start) < 50);
+    P1OUT &= ~BIT5;
 }
