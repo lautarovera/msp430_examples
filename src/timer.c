@@ -1,7 +1,7 @@
 #include <msp430.h>
 #include <stdio.h>
 
-void CLK_Init(void)
+void Clk_Init(void)
 {
     // Startup clock system with max DCO setting ~8MHz
     CSCTL0_H = CSKEY_H;                     // Unlock CS registers
@@ -36,7 +36,7 @@ int main( void )
     WDTCTL = WDTPW | WDTHOLD;               // Stop watchdog timer
     PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
 
-    CLK_Init();
+    Clk_Init();
 
     app_timer();
 }

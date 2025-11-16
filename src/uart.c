@@ -15,7 +15,7 @@ int _write(int file, char *ptr, int len) {
     return len;
 }
 
-void CLK_Init(void)
+void Clk_Init(void)
 {
     // Startup clock system with max DCO setting ~8MHz
     CSCTL0_H = CSKEY_H;                     // Unlock CS registers
@@ -27,7 +27,7 @@ void CLK_Init(void)
     __delay_cycles(10000);  // Wait for clock set
 }
 
-void UART_init(void)
+void Uart_Init(void)
 {
     // Configure GPIO
     P2SEL1 |= BIT0 + BIT1;              //Activate Pin for UART use
@@ -55,8 +55,8 @@ void app_uart(void)
     P3SEL1 |= BIT4;  // Select SMCLK function
     P3SEL0 |= BIT4;
 
-    CLK_Init();
-    UART_init();
+    Clk_Init();
+    Uart_Init();
 
     while(1)
     {

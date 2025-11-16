@@ -80,7 +80,7 @@ void SystemTick_Init(void)
     TA0CTL   = TASSEL__SMCLK | ID__8 | MC__UP | TACLR;
 }
 
-void GPIO_Init(void)
+void Gpio_Init(void)
 {
     P1DIR |= BIT0 | BIT1;    // P1.0 and P1.1 as outputs
     P1OUT &= ~(BIT0 | BIT1); // Initialize LEDs off
@@ -91,7 +91,7 @@ int main( void )
     WDTCTL = WDTPW | WDTHOLD;               // Stop watchdog timer
     PM5CTL0 &= ~LOCKLPM5;                   // Disable the GPIO power-on default high-impedance mode
 
-    GPIO_Init();
+    Gpio_Init();
 
     Clk_Init(CLK_1MHZ);
 

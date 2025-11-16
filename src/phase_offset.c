@@ -30,9 +30,9 @@ typedef struct {
 } task_t;
 
 /* ---------- User tasks ---------- */
-static void task_fast(uint32_t now_ms);
-static void task_medium(uint32_t now_ms);
-static void task_slow(uint32_t now_ms);
+static void Task_Fast(uint32_t now_ms);
+static void Task_Medium(uint32_t now_ms);
+static void Task_Slow(uint32_t now_ms);
 
 /* ---------- Scheduler state ---------- */
 static volatile uint32_t sys_ms = 0;
@@ -40,7 +40,7 @@ static task_t tasks[MAX_TASKS];
 static uint8_t task_count = 0;
 
 /* ---------- Clock / GPIO / Timer ---------- */
-void CLK_Init(void)
+void Clk_Init(void)
 {
     CSCTL0_H = CSKEY >> 8;            // unlock
     CSCTL1 = DCOFSEL_0;               // DCO = 1 MHz
@@ -49,14 +49,14 @@ void CLK_Init(void)
     CSCTL0_H = 0;                     // lock
 }
 
-void GPIO_Init(void)
+void Gpio_Init(void)
 {
     PM5CTL0 &= ~LOCKLPM5;             // enable GPIO
     P1DIR |= BIT0 | BIT1;             // P1.0 and P1.1 outputs
     P1OUT &= ~(BIT0 | BIT1);
 }
 
-void TimerA0_Init_1ms(void)
+void TimerA0_Init(void)
 {
     TA0CCR0 = 999;                    // 1 MHz / 1000 = 1 kHz => 1 ms
     TA0CCTL0 = CCIE;                  // CCR0 interrupt enable
@@ -64,7 +64,7 @@ void TimerA0_Init_1ms(void)
 }
 
 /* ---------- Task registration ---------- */
-int scheduler_register_task(task_fn_t fn, uint32_t period_ms, uint32_t slice_ms, uint32_t phase_offset_ms)
+int Scheduler_AddTask(task_fn_t fn, uint32_t period_ms, uint32_t slice_ms, uint32_t phase_offset_ms)
 {
     if (task_count >= MAX_TASKS) return -1;
     tasks[task_count].fn = fn;
@@ -95,14 +95,14 @@ int main(void)
 {
     WDTCTL = WDTPW | WDTHOLD;
 
-    CLK_Init();
-    GPIO_Init();
-    TimerA0_Init_1ms();
+    Clk_Init();
+    Gpio_Init();
+    TimerA0_Init();
 
     /* Register tasks with deterministic offsets */
-    scheduler_register_task(task_fast,   10,  1,  0);   // every 10 ms, 1 ms slice, offset 0
-    scheduler_register_task(task_medium, 100, 5,  2);   // every 100 ms, 5 ms slice, offset 2
-    scheduler_register_task(task_slow,   500, 20, 10);  // every 500 ms, 20 ms slice, offset 10
+    Scheduler_AddTask(Task_Fast,   10,  1,  0);   // every 10 ms, 1 ms slice, offset 0
+    Scheduler_AddTask(Task_Medium, 100, 5,  2);   // every 100 ms, 5 ms slice, offset 2
+    Scheduler_AddTask(Task_Slow,   500, 20, 10);  // every 500 ms, 20 ms slice, offset 10
 
     __enable_interrupt();
 
@@ -139,20 +139,20 @@ int main(void)
 }
 
 /* ---------- User task implementations ---------- */
-static void task_fast(uint32_t now_ms)
+static void Task_Fast(uint32_t now_ms)
 {
     /* Simulate small work (LED toggle) */
     P1OUT ^= BIT0;
     (void)now_ms;
 }
 
-static void task_medium(uint32_t now_ms)
+static void Task_Medium(uint32_t now_ms)
 {
     P1OUT ^= BIT0;  // toggle LED1 slower
     (void)now_ms;
 }
 
-static void task_slow(uint32_t now_ms)
+static void Task_Slow(uint32_t now_ms)
 {
     P1OUT ^= BIT1;  // toggle LED2
     (void)now_ms;

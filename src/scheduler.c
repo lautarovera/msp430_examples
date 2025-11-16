@@ -37,7 +37,7 @@ static task_t tasks[MAX_TASKS];
 static uint8_t  task_count = 0;
 
 /* Register a periodic task. Returns 0 on success, -1 on failure. */
-int scheduler_register_task(task_fn_t fn, uint32_t period_ms)
+int Scheduler_AddTask(task_fn_t fn, uint32_t period_ms)
 {
     if (!fn || period_ms == 0 || task_count >= MAX_TASKS) return -1;
     tasks[task_count].fn = fn;
@@ -48,7 +48,7 @@ int scheduler_register_task(task_fn_t fn, uint32_t period_ms)
 }
 
 /* ---------- Clock / GPIO / Timer init ---------- */
-void CLK_Init(void)
+void Clk_Init(void)
 {
     CSCTL0_H = CSKEY >> 8;            // unlock
     CSCTL1 = DCOFSEL_0;               // DCO = 1 MHz
@@ -57,7 +57,7 @@ void CLK_Init(void)
     CSCTL0_H = 0;                     // lock
 }
 
-void GPIO_Init(void)
+void Gpio_Init(void)
 {
     PM5CTL0 &= ~LOCKLPM5;             // enable GPIO (FRAM devices)
     P1DIR |= BIT0 | BIT1;             // P1.0 and P1.1 outputs
@@ -68,7 +68,7 @@ void GPIO_Init(void)
  * SMCLK = 1 MHz, use no divider -> CCR0 = 1000-1 = 999 for 1 ms
  * However we prefer smaller CCR0 to keep timer resolution low-cost on 16-bit: use TA0CCR0 = 999
  */
-void TimerA0_Init_1ms(void)
+void TimerA0_Init(void)
 {
     TA0CCR0 = 999;                    // 1 MHz / 1000 = 1 kHz => 1 ms
     TA0CCTL0 = CCIE;                  // CCR0 interrupt enable
@@ -122,15 +122,15 @@ int main(void)
 {
     WDTCTL = WDTPW | WDTHOLD;     // stop watchdog
 
-    CLK_Init();
-    GPIO_Init();
+    Clk_Init();
+    Gpio_Init();
 
     /* Register tasks (periods in ms). Period must be >= TICK_MS and integer ms. */
-    scheduler_register_task(task_10ms,  10);
-    scheduler_register_task(task_100ms, 100);
-    scheduler_register_task(task_500ms, 500);
+    Scheduler_AddTask(task_10ms,  10);
+    Scheduler_AddTask(task_100ms, 100);
+    Scheduler_AddTask(task_500ms, 500);
 
-    TimerA0_Init_1ms();
+    TimerA0_Init();
 
     __enable_interrupt();
 
